@@ -8,11 +8,13 @@
   <style>
     body { font-family: sans-serif; margin: 0; background: #f8f9fa; }
     header, nav, main { padding: 1rem; }
-    header { background: #f06292; color: white; text-align: center; }
-    nav button { margin: 0.5rem; padding: 0.5rem 1rem; cursor: pointer; }
+    header { background: #4fc3f7; color: white; text-align: center; }
+    nav button { margin: 0.5rem; padding: 0.5rem 1rem; cursor: pointer; background: #4fc3f7; color: white; border: none; border-radius: 4px; }
     section { display: none; margin-top: 1rem; }
     section.active { display: block; }
-    .video, .news-item { background: white; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; box-shadow: 0 0 5px #ccc; }
+    .video, .news-item { display: flex; gap: 1rem; background: white; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; box-shadow: 0 0 5px #ccc; }
+    .video img, .news-item img { width: 120px; height: auto; border-radius: 4px; object-fit: cover; }
+    .video .info, .news-item .info { flex: 1; }
     .controls { margin-bottom: 1rem; }
   </style>
 </head>
@@ -66,11 +68,15 @@
       const data = await res.json();
       const parser = new DOMParser();
       const xml = parser.parseFromString(data.contents, "text/xml");
-      youtubeEntries = Array.from(xml.querySelectorAll("entry")).map(entry => ({
-        title: entry.querySelector("title").textContent,
-        link: entry.querySelector("link").getAttribute("href"),
-        published: new Date(entry.querySelector("published").textContent)
-      }));
+      youtubeEntries = Array.from(xml.querySelectorAll("entry")).map(entry => {
+        const videoId = entry.querySelector("yt\\:videoId").textContent;
+        return {
+          title: entry.querySelector("title").textContent,
+          link: entry.querySelector("link").getAttribute("href"),
+          published: new Date(entry.querySelector("published").textContent),
+          thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+        };
+      });
       sortYouTube(true);
     }
 
@@ -79,8 +85,11 @@
       const sorted = youtubeEntries.sort((a, b) => desc ? b.published - a.published : a.published - b.published);
       list.innerHTML = sorted.map(v => `
         <div class="video">
-          <a href="${v.link}" target="_blank">${v.title}</a><br>
-          <small>${v.published.toLocaleString()}</small>
+          <img src="${v.thumbnail}" alt="Thumbnail">
+          <div class="info">
+            <a href="${v.link}" target="_blank">${v.title}</a><br>
+            <small>${v.published.toLocaleString()}</small>
+          </div>
         </div>
       `).join('');
     }
@@ -94,7 +103,8 @@
       newsEntries = Array.from(xml.querySelectorAll("item")).map(item => ({
         title: item.querySelector("title").textContent,
         link: item.querySelector("link").textContent,
-        pubDate: new Date(item.querySelector("pubDate").textContent)
+        pubDate: new Date(item.querySelector("pubDate").textContent),
+        image: "https://placehold.co/120x90?text=News" // プレースホルダー画像
       }));
       sortNews(true);
     }
@@ -104,8 +114,11 @@
       const sorted = newsEntries.sort((a, b) => desc ? b.pubDate - a.pubDate : a.pubDate - b.pubDate);
       list.innerHTML = sorted.map(n => `
         <div class="news-item">
-          <a href="${n.link}" target="_blank">${n.title}</a><br>
-          <small>${n.pubDate.toLocaleString()}</small>
+          <img src="${n.image}" alt="News Thumbnail">
+          <div class="info">
+            <a href="${n.link}" target="_blank">${n.title}</a><br>
+            <small>${n.pubDate.toLocaleString()}</small>
+          </div>
         </div>
       `).join('');
     }
