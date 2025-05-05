@@ -2,189 +2,150 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>日向坂46 YouTube & ニュース</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>日向坂46 動画＆ニュースまとめ</title>
   <style>
     body {
       font-family: 'Arial', sans-serif;
       margin: 0;
       padding: 0;
-      background-color: #f7f7f7;
+      background: #f9f9f9;
       color: #333;
     }
     header {
-      background-color: #FFDC00;
-      padding: 15px;
+      background: #1e90ff;
+      color: white;
+      padding: 1rem;
       text-align: center;
-      font-size: 24px;
-      font-weight: bold;
+    }
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      background: #e0e0e0;
+      padding: 1rem;
+    }
+    nav button {
+      padding: 0.5rem 1rem;
+      border: none;
+      background: #fff;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    nav button.active {
+      background: #1e90ff;
+      color: white;
     }
     .container {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
-      padding: 20px;
+      max-width: 960px;
+      margin: 2rem auto;
+      padding: 1rem;
     }
-    .card {
-      background-color: #fff;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      transition: transform 0.3s;
+    .video {
+      margin-bottom: 2rem;
     }
-    .card:hover {
-      transform: translateY(-10px);
-    }
-    .card img {
+    iframe {
       width: 100%;
-      height: auto;
-      object-fit: cover;
-    }
-    .card-content {
-      padding: 15px;
-    }
-    .card-content p {
-      font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 10px;
-      color: #333;
-    }
-    .card-content a {
-      color: #FFDC00;
-      text-decoration: none;
-      font-weight: bold;
-    }
-    .card-content a:hover {
-      text-decoration: underline;
-    }
-    .button {
-      padding: 10px 20px;
-      background-color: #FFDC00;
-      color: #fff;
+      height: 315px;
       border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 16px;
-      margin-top: 10px;
     }
-    .button:hover {
-      background-color: #e5c200;
+    h2 {
+      margin-top: 2rem;
+      color: #1e90ff;
     }
-    .channel-buttons {
-      margin-bottom: 20px;
-      display: flex;
-      gap: 10px;
-      justify-content: center;
+    .news {
+      margin-top: 2rem;
+    }
+    .news-item {
+      margin-bottom: 1rem;
+    }
+    .news-item a {
+      color: #1e90ff;
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
-  <header>日向坂46 YouTube & ニュース</header>
 
-  <div class="container">
-    <!-- チャンネル選択ボタン -->
-    <div class="channel-buttons">
-      <button class="button" onclick="switchChannel('UCZEkRjQ8b4K-1zaYqDsW9WQ')">日向坂46 OFFICIAL YouTube CHANNEL</button>
-      <button class="button" onclick="switchChannel('UCs-QBT4qkj_YiQw1ZntDO3g')">日向坂ちゃんねる</button>
-    </div>
+<header>
+  <h1>日向坂46 動画＆ニュースまとめ</h1>
+</header>
 
-    <div class="section">
-      <h2>最新のYouTube動画</h2>
-      <div id="youtubeVideos"></div>
-      <button class="button" onclick="loadMoreVideos()">もっと見る</button>
-    </div>
-    <div class="section">
-      <h2>関連ニュース</h2>
-      <div id="newsArticles"></div>
-      <button class="button" onclick="loadMoreNews()">もっと見る</button>
-    </div>
-  </div>
+<nav>
+  <button class="tab-button active" data-channel="hinata">日向坂46 OFFICIAL</button>
+  <button class="tab-button" data-channel="channeru">日向坂ちゃんねる</button>
+</nav>
 
-  <script>
-    let currentChannelId = 'UCZEkRjQ8b4K-1zaYqDsW9WQ'; // 初期チャンネルID
-    let videoPage = 1;
-    let newsPage = 1;
+<div class="container">
+  <section id="videos"></section>
 
-    async function fetchRSS(url) {
-      const res = await fetch(url);
-      const text = await res.text();
-      return new window.DOMParser().parseFromString(text, 'text/xml');
-    }
+  <h2>日向坂関連ニュース</h2>
+  <section id="news" class="news">読み込み中...</section>
+</div>
 
-    async function fetchYouTubeVideos() {
-      const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${currentChannelId}`;
-      const xml = await fetchRSS(rssUrl);
-      const entries = xml.querySelectorAll('entry');
-      const videos = Array.from(entries).map(entry => {
-        return {
-          title: entry.querySelector('title').textContent,
-          link: entry.querySelector('link').getAttribute('href'),
-          thumbnail: entry.querySelector('media\\:thumbnail')?.getAttribute('url') || ''
-        };
-      });
+<script>
+const channels = {
+  hinata: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCZEkRjQ8b4K-1zaYqDsW9WQ',
+  channeru: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCs-QBT4qkj_YiQw1ZntDO3g'
+};
 
-      const youtubeVideosContainer = document.getElementById('youtubeVideos');
-      youtubeVideosContainer.innerHTML = ''; // Clear existing videos
+const rssToJsonApi = 'https://api.rss2json.com/v1/api.json?rss_url=';
+
+let currentChannel = 'hinata';
+
+function fetchVideos(channelKey) {
+  const feedUrl = `${rssToJsonApi}${encodeURIComponent(channels[channelKey])}`;
+  fetch(feedUrl)
+    .then(res => res.json())
+    .then(data => {
+      const videos = data.items;
+      const container = document.getElementById('videos');
+      container.innerHTML = `<h2>${channelKey === 'hinata' ? '日向坂46 OFFICIAL' : '日向坂ちゃんねる'}の最新動画</h2>`;
 
       videos.forEach(video => {
-        const videoCard = document.createElement('div');
-        videoCard.classList.add('card');
-        videoCard.innerHTML = `
-          <img src="${video.thumbnail}" alt="${video.title}">
-          <div class="card-content">
-            <p>${video.title}</p>
-            <a href="${video.link}" target="_blank">動画を見る</a>
+        const videoId = video.link.split('=')[1];
+        container.innerHTML += `
+          <div class="video">
+            <h3>${video.title}</h3>
+            <iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>
+            <p>公開日: ${new Date(video.pubDate).toLocaleDateString()}</p>
           </div>
         `;
-        youtubeVideosContainer.appendChild(videoCard);
       });
-    }
+    });
+}
 
-    async function fetchNews() {
-      const rssUrl = `https://news.google.com/rss/search?q=日向坂46&hl=ja&gl=JP&ceid=JP:ja`;
-      const xml = await fetchRSS(rssUrl);
-      const entries = xml.querySelectorAll('item');
-      const newsArticles = Array.from(entries).map(entry => {
-        return {
-          title: entry.querySelector('title').textContent,
-          link: entry.querySelector('link').textContent,
-        };
-      });
-
-      const newsArticlesContainer = document.getElementById('newsArticles');
-      newsArticlesContainer.innerHTML = ''; // Clear existing news
-
-      newsArticles.forEach(news => {
-        const newsCard = document.createElement('div');
-        newsCard.classList.add('card');
-        newsCard.innerHTML = `
-          <div class="card-content">
-            <p>${news.title}</p>
-            <a href="${news.link}" target="_blank">記事を読む</a>
+function fetchNews() {
+  const hinataNewsFeed = 'https://news.google.com/rss/search?q=日向坂46&hl=ja&gl=JP&ceid=JP:ja';
+  fetch(`${rssToJsonApi}${encodeURIComponent(hinataNewsFeed)}`)
+    .then(res => res.json())
+    .then(data => {
+      const news = data.items;
+      const container = document.getElementById('news');
+      container.innerHTML = '';
+      news.slice(0, 10).forEach(item => {
+        container.innerHTML += `
+          <div class="news-item">
+            <a href="${item.link}" target="_blank">${item.title}</a><br>
+            <small>${new Date(item.pubDate).toLocaleDateString()}</small>
           </div>
         `;
-        newsArticlesContainer.appendChild(newsCard);
       });
-    }
+    });
+}
 
-    function switchChannel(channelId) {
-      currentChannelId = channelId;
-      fetchYouTubeVideos(); // チャンネル切り替え後に動画を取得
-    }
+document.querySelectorAll('.tab-button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentChannel = btn.dataset.channel;
+    fetchVideos(currentChannel);
+  });
+});
 
-    function loadMoreVideos() {
-      videoPage += 1;
-      fetchYouTubeVideos();
-    }
+fetchVideos(currentChannel);
+fetchNews();
+</script>
 
-    function loadMoreNews() {
-      newsPage += 1;
-      fetchNews();
-    }
-
-    // 初期データを読み込む
-    fetchYouTubeVideos();
-    fetchNews();
-  </script>
 </body>
 </html>
