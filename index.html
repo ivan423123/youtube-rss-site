@@ -19,6 +19,7 @@
     .filters { margin: 1rem 0; }
     .filters label, .filters input, .filters select { margin-right: 1rem; }
     .news-item a, .blog-item a { color: #1e90ff; text-decoration: none; }
+    #channelSelector { display: none; margin: 1rem 0; }
   </style>
 </head>
 <body>
@@ -28,11 +29,20 @@
 </header>
 
 <nav>
-  <button class="tab-button active" data-channel="official">日向坂46 OFFICIAL</button>
-  <button class="tab-button" data-channel="channeru">日向坂ちゃんねる</button>
+  <button class="main-tab-button active" data-section="youtube">YouTube</button>
+  <button class="main-tab-button" data-section="blog">ブログ</button>
+  <button class="main-tab-button" data-section="news">関連ニュース</button>
 </nav>
 
 <div class="container">
+  <div id="channelSelector">
+    <label for="channelSelect">チャンネル選択:</label>
+    <select id="channelSelect">
+      <option value="official">日向坂46 OFFICIAL</option>
+      <option value="channeru">日向坂ちゃんねる</option>
+    </select>
+  </div>
+
   <div class="filters">
     <label for="sort">並び順:</label>
     <select id="sort">
@@ -44,12 +54,8 @@
   </div>
 
   <section id="videos"></section>
-
-  <h2>日向坂関連ニュース</h2>
-  <section id="news" class="news">読み込み中...</section>
-
-  <h2>日向坂ブログ</h2>
-  <section id="blog" class="blog">読み込み中...</section>
+  <section id="news" style="display:none"></section>
+  <section id="blog" style="display:none"></section>
 </div>
 
 <script>
@@ -57,7 +63,6 @@ const channels = {
   official: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCR0V48DJyWbwEAdxLL5FjxA',
   channeru: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCOB24f8lQBCnVqPZXOkVpOg'
 };
-
 const rssToJsonApi = 'https://api.rss2json.com/v1/api.json?rss_url=';
 let currentChannel = 'official';
 
@@ -66,21 +71,15 @@ function fetchVideos(channelKey) {
   fetch(feedUrl)
     .then(res => res.json())
     .then(data => {
-      let videos = data.items;
-
-      // フィルターとソート
+      let videos = data.items || [];
       const filterDate = document.getElementById('filterDate').value;
       const sort = document.getElementById('sort').value;
-
       if (filterDate) {
         videos = videos.filter(video => video.pubDate.startsWith(filterDate));
       }
-
       videos.sort((a, b) => sort === 'newest' ? new Date(b.pubDate) - new Date(a.pubDate) : new Date(a.pubDate) - new Date(b.pubDate));
-
       const container = document.getElementById('videos');
       container.innerHTML = `<h2>${channelKey === 'official' ? '日向坂46 OFFICIAL' : '日向坂ちゃんねる'}の動画</h2>`;
-
       videos.forEach(video => {
         const videoId = video.link.split('=')[1];
         container.innerHTML += `
@@ -99,10 +98,11 @@ function fetchNews() {
   fetch(`${rssToJsonApi}${encodeURIComponent(newsFeed)}`)
     .then(res => res.json())
     .then(data => {
-      const news = data.items;
+      let news = data.items || [];
+      const sort = document.getElementById('sort').value;
+      news.sort((a, b) => sort === 'newest' ? new Date(b.pubDate) - new Date(a.pubDate) : new Date(a.pubDate) - new Date(b.pubDate));
       const container = document.getElementById('news');
-      container.innerHTML = '';
-
+      container.innerHTML = '<h2>日向坂関連ニュース</h2>';
       news.forEach(item => {
         container.innerHTML += `
           <div class="news-item">
@@ -115,43 +115,47 @@ function fetchNews() {
 }
 
 function fetchBlog() {
-  const blogFeed = 'https://www.hinatazaka46.com/s/official/diary/member/rss';
-  fetch(`${rssToJsonApi}${encodeURIComponent(blogFeed)}`)
-    .then(res => res.json())
-    .then(data => {
-      const blogs = data.items;
-      const container = document.getElementById('blog');
-      container.innerHTML = '';
-
-      blogs.forEach(item => {
-        container.innerHTML += `
-          <div class="blog-item">
-            <a href="${item.link}" target="_blank">${item.title}</a><br>
-            <small>${new Date(item.pubDate).toLocaleDateString()}</small>
-          </div>
-        `;
-      });
-    });
+  const blogFeed = 'https://www.hinatazaka46.com/s/official/diary/member/list?ima=0000';
+  // RSS2JSON APIはRSS形式のみ対応。Hinatazaka公式ブログにRSSがないため、ここでは代替不可。
+  const container = document.getElementById('blog');
+  container.innerHTML = '<p>公式ブログのRSSが提供されていないため、自動取得できません。</p>';
 }
 
-// イベントリスナー
-
-document.querySelectorAll('.tab-button').forEach(btn => {
+document.querySelectorAll('.main-tab-button').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.main-tab-button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    currentChannel = btn.dataset.channel;
-    fetchVideos(currentChannel);
+
+    const section = btn.dataset.section;
+    document.getElementById('channelSelector').style.display = section === 'youtube' ? 'block' : 'none';
+    document.getElementById('videos').style.display = section === 'youtube' ? 'block' : 'none';
+    document.getElementById('news').style.display = section === 'news' ? 'block' : 'none';
+    document.getElementById('blog').style.display = section === 'blog' ? 'block' : 'none';
+
+    if (section === 'youtube') fetchVideos(currentChannel);
+    else if (section === 'news') fetchNews();
+    else if (section === 'blog') fetchBlog();
   });
 });
 
-document.getElementById('sort').addEventListener('change', () => fetchVideos(currentChannel));
-document.getElementById('filterDate').addEventListener('change', () => fetchVideos(currentChannel));
+document.getElementById('channelSelect').addEventListener('change', e => {
+  currentChannel = e.target.value;
+  fetchVideos(currentChannel);
+});
+
+document.getElementById('sort').addEventListener('change', () => {
+  const visible = document.querySelector('.main-tab-button.active').dataset.section;
+  if (visible === 'youtube') fetchVideos(currentChannel);
+  else if (visible === 'news') fetchNews();
+});
+
+document.getElementById('filterDate').addEventListener('change', () => {
+  const visible = document.querySelector('.main-tab-button.active').dataset.section;
+  if (visible === 'youtube') fetchVideos(currentChannel);
+});
 
 // 初期ロード
 fetchVideos(currentChannel);
-fetchNews();
-fetchBlog();
 </script>
 
 </body>
