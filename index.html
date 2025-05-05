@@ -1,162 +1,131 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>日向坂46 動画・ニュース・ブログまとめ</title>
-  <meta name="description" content="日向坂46の最新YouTube動画、ニュース、ブログ情報をまとめてチェックできるファン向けサイトです。">
-  <meta name="keywords" content="日向坂46, 日向坂ちゃんねる, YouTube, ニュース, ブログ, 動画">
-  <style>
-    body { font-family: 'Arial', sans-serif; background: #f9f9f9; margin: 0; padding: 0; color: #333; }
-    header { background: #1e90ff; color: white; padding: 1rem; text-align: center; }
-    nav { display: flex; justify-content: center; gap: 1rem; background: #e0e0e0; padding: 1rem; flex-wrap: wrap; }
-    nav button { padding: 0.5rem 1rem; border: none; background: #fff; cursor: pointer; border-radius: 5px; }
-    nav button.active { background: #1e90ff; color: white; }
-    .container { max-width: 960px; margin: 2rem auto; padding: 1rem; }
-    .video, .news-item, .blog-item { margin-bottom: 2rem; }
-    iframe { width: 100%; height: 315px; border: none; }
-    h2 { color: #1e90ff; }
-    .filters { margin: 1rem 0; }
-    .filters label, .filters input, .filters select { margin-right: 1rem; }
-    .news-item a, .blog-item a { color: #1e90ff; text-decoration: none; }
-    #channelSelector { display: none; margin: 1rem 0; }
-  </style>
-</head>
-<body>
+import React, { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-<header>
-  <h1>日向坂46 動画・ニュース・ブログまとめ</h1>
-</header>
-
-<nav>
-  <button class="main-tab-button active" data-section="youtube">YouTube</button>
-  <button class="main-tab-button" data-section="blog">ブログ</button>
-  <button class="main-tab-button" data-section="news">関連ニュース</button>
-</nav>
-
-<div class="container">
-  <div id="channelSelector">
-    <label for="channelSelect">チャンネル選択:</label>
-    <select id="channelSelect">
-      <option value="official">日向坂46 OFFICIAL</option>
-      <option value="channeru">日向坂ちゃんねる</option>
-    </select>
-  </div>
-
-  <div class="filters">
-    <label for="sort">並び順:</label>
-    <select id="sort">
-      <option value="newest">新しい順</option>
-      <option value="oldest">古い順</option>
-    </select>
-    <label for="filterDate">日付で絞り込み:</label>
-    <input type="date" id="filterDate">
-  </div>
-
-  <section id="videos"></section>
-  <section id="news" style="display:none"></section>
-  <section id="blog" style="display:none"></section>
-</div>
-
-<script>
-const channels = {
-  official: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCR0V48DJyWbwEAdxLL5FjxA',
-  channeru: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCOB24f8lQBCnVqPZXOkVpOg'
+const YOUTUBE_FEEDS = {
+  UCR0V48DJyWbwEAdxLL5FjxA: "日向坂46 OFFICIAL YouTube CHANNEL",
+  UCOB24f8lQBCnVqPZXOkVpOg: "日向坂ちゃんねる",
 };
-const rssToJsonApi = 'https://api.rss2json.com/v1/api.json?rss_url=';
-let currentChannel = 'official';
 
-function fetchVideos(channelKey) {
-  const feedUrl = `${rssToJsonApi}${encodeURIComponent(channels[channelKey])}`;
-  fetch(feedUrl)
-    .then(res => res.json())
-    .then(data => {
-      let videos = data.items || [];
-      const filterDate = document.getElementById('filterDate').value;
-      const sort = document.getElementById('sort').value;
-      if (filterDate) {
-        videos = videos.filter(video => video.pubDate.startsWith(filterDate));
-      }
-      videos.sort((a, b) => sort === 'newest' ? new Date(b.pubDate) - new Date(a.pubDate) : new Date(a.pubDate) - new Date(b.pubDate));
-      const container = document.getElementById('videos');
-      container.innerHTML = `<h2>${channelKey === 'official' ? '日向坂46 OFFICIAL' : '日向坂ちゃんねる'}の動画</h2>`;
-      videos.forEach(video => {
-        const videoId = video.link.split('=')[1];
-        container.innerHTML += `
-          <div class="video">
-            <h3>${video.title}</h3>
-            <iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>
-            <p>公開日: ${new Date(video.pubDate).toLocaleDateString()}</p>
-          </div>
-        `;
-      });
-    });
-}
+const NEWS_API = "https://newsdata.io/api/1/news?apikey=demo&q=日向坂46&language=ja";
 
-function fetchNews() {
-  const newsFeed = 'https://news.google.com/rss/search?q=日向坂46&hl=ja&gl=JP&ceid=JP:ja';
-  fetch(`${rssToJsonApi}${encodeURIComponent(newsFeed)}`)
-    .then(res => res.json())
-    .then(data => {
-      let news = data.items || [];
-      const sort = document.getElementById('sort').value;
-      news.sort((a, b) => sort === 'newest' ? new Date(b.pubDate) - new Date(a.pubDate) : new Date(a.pubDate) - new Date(b.pubDate));
-      const container = document.getElementById('news');
-      container.innerHTML = '<h2>日向坂関連ニュース</h2>';
-      news.forEach(item => {
-        container.innerHTML += `
-          <div class="news-item">
-            <a href="${item.link}" target="_blank">${item.title}</a><br>
-            <small>${new Date(item.pubDate).toLocaleDateString()}</small>
-          </div>
-        `;
-      });
-    });
-}
+export default function Home() {
+  const [view, setView] = useState<string | null>(null);
+  const [channel, setChannel] = useState<string | null>(null);
+  const [videos, setVideos] = useState<any[]>([]);
+  const [news, setNews] = useState<any[]>([]);
+  const [videoSort, setVideoSort] = useState("new");
+  const [newsSort, setNewsSort] = useState("new");
+  const [videoPageToken, setVideoPageToken] = useState<string | null>(null);
+  const [videoList, setVideoList] = useState<any[]>([]);
+  const [newsPage, setNewsPage] = useState<number>(1);
 
-function fetchBlog() {
-  const blogFeed = 'https://www.hinatazaka46.com/s/official/diary/member/list?ima=0000';
-  // RSS2JSON APIはRSS形式のみ対応。Hinatazaka公式ブログにRSSがないため、ここでは代替不可。
-  const container = document.getElementById('blog');
-  container.innerHTML = '<p>公式ブログのRSSが提供されていないため、自動取得できません。</p>';
-}
+  useEffect(() => {
+    if (channel) fetchYouTubeVideos();
+  }, [channel]);
 
-document.querySelectorAll('.main-tab-button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.main-tab-button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+  useEffect(() => {
+    fetchNews();
+  }, [newsPage]);
 
-    const section = btn.dataset.section;
-    document.getElementById('channelSelector').style.display = section === 'youtube' ? 'block' : 'none';
-    document.getElementById('videos').style.display = section === 'youtube' ? 'block' : 'none';
-    document.getElementById('news').style.display = section === 'news' ? 'block' : 'none';
-    document.getElementById('blog').style.display = section === 'blog' ? 'block' : 'none';
+  const fetchYouTubeVideos = async (loadMore = false) => {
+    const channelId = channel;
+    const apiKey = "YOUR_YOUTUBE_API_KEY"; // Replace with actual API key
+    let url = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&order=date&maxResults=10`;
+    if (loadMore && videoPageToken) url += `&pageToken=${videoPageToken}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const fetchedVideos = data.items.filter((item: any) => item.id.videoId);
+    setVideoList((prev) => [...prev, ...fetchedVideos]);
+    setVideoPageToken(data.nextPageToken || null);
+  };
 
-    if (section === 'youtube') fetchVideos(currentChannel);
-    else if (section === 'news') fetchNews();
-    else if (section === 'blog') fetchBlog();
+  const fetchNews = async () => {
+    const res = await fetch(`${NEWS_API}&page=${newsPage}`);
+    const data = await res.json();
+    setNews((prev) => [...prev, ...(data.results || [])]);
+  };
+
+  const sortedVideos = [...videoList].sort((a, b) => {
+    const dateA = new Date(a.snippet.publishedAt).getTime();
+    const dateB = new Date(b.snippet.publishedAt).getTime();
+    return videoSort === "new" ? dateB - dateA : dateA - dateB;
   });
-});
 
-document.getElementById('channelSelect').addEventListener('change', e => {
-  currentChannel = e.target.value;
-  fetchVideos(currentChannel);
-});
+  const sortedNews = [...news].sort((a, b) => {
+    const dateA = new Date(a.pubDate).getTime();
+    const dateB = new Date(b.pubDate).getTime();
+    return newsSort === "new" ? dateB - dateA : dateA - dateB;
+  });
 
-document.getElementById('sort').addEventListener('change', () => {
-  const visible = document.querySelector('.main-tab-button.active').dataset.section;
-  if (visible === 'youtube') fetchVideos(currentChannel);
-  else if (visible === 'news') fetchNews();
-});
+  return (
+    <div className="p-4 space-y-4">
+      {!view && (
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { key: "youtube", label: "YouTube" },
+            { key: "news", label: "関連ニュース" },
+          ].map((item) => (
+            <Button key={item.key} onClick={() => setView(item.key)}>
+              {item.label}
+            </Button>
+          ))}
+        </div>
+      )}
 
-document.getElementById('filterDate').addEventListener('change', () => {
-  const visible = document.querySelector('.main-tab-button.active').dataset.section;
-  if (visible === 'youtube') fetchVideos(currentChannel);
-});
+      {view === "youtube" && !channel && (
+        <div className="space-y-2">
+          {Object.entries(YOUTUBE_FEEDS).map(([id, name]) => (
+            <Button key={id} onClick={() => setChannel(id)}>
+              {name}
+            </Button>
+          ))}
+        </div>
+      )}
 
-// 初期ロード
-fetchVideos(currentChannel);
-</script>
+      {view === "youtube" && channel && (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Button onClick={() => setVideoSort("new")}>新しい順</Button>
+            <Button onClick={() => setVideoSort("old")}>古い順</Button>
+          </div>
+          {sortedVideos.map((item, index) => (
+            <Card key={index}>
+              <CardContent>
+                <a
+                  href={`https://www.youtube.com/watch?v=${item.id.videoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <p>{item.snippet.title}</p>
+                </a>
+              </CardContent>
+            </Card>
+          ))}
+          {videoPageToken && (
+            <Button onClick={() => fetchYouTubeVideos(true)}>もっと見る</Button>
+          )}
+        </div>
+      )}
 
-</body>
-</html>
+      {view === "news" && (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Button onClick={() => setNewsSort("new")}>新しい順</Button>
+            <Button onClick={() => setNewsSort("old")}>古い順</Button>
+          </div>
+          {sortedNews.map((article, index) => (
+            <Card key={index}>
+              <CardContent>
+                <a href={article.link} target="_blank" rel="noopener noreferrer">
+                  <p>{article.title}</p>
+                </a>
+              </CardContent>
+            </Card>
+          ))}
+          <Button onClick={() => setNewsPage((prev) => prev + 1)}>もっと見る</Button>
+        </div>
+      )}
+    </div>
+  );
+}
