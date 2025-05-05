@@ -1,141 +1,55 @@
-// pages/index.tsx
-import { useState, useEffect } from "react";
-import Head from "next/head";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-
-const YOUTUBE_API_KEY = "your id"; // 差し替えてください
-const CHANNELS = [
-  {
-    id: "UCR0V48DJyWbwEAdxLL5FjxA",
-    name: "日向坂46 OFFICIAL YouTube CHANNEL"
-  },
-  {
-    id: "UCOB24f8lQBCnVqPZXOkVpOg",
-    name: "日向坂ちゃんねる"
-  }
-];
-
-export default function Home() {
-  const [view, setView] = useState<"menu" | "youtube" | "news">("menu");
-  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
-  const [videos, setVideos] = useState<any[]>([]);
-  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
-  const [videoSort, setVideoSort] = useState<"new" | "old">("new");
-
-  const [news, setNews] = useState<any[]>([]);
-  const [newsPage, setNewsPage] = useState<number>(1);
-  const [newsSort, setNewsSort] = useState<"new" | "old">("new");
-
-  useEffect(() => {
-    if (selectedChannel) {
-      fetchVideos(selectedChannel);
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日向坂46 YouTube</title>
+  <style>
+    /* スタイルはここで調整できます */
+    .video-card {
+      border: 1px solid #ddd;
+      margin: 10px;
+      padding: 10px;
+      width: 300px;
     }
-  }, [selectedChannel]);
-
-  useEffect(() => {
-    fetchNews();
-  }, [newsPage]);
-
-  async function fetchVideos(channelId: string, loadMore = false) {
-    let url = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${channelId}&part=snippet,id&order=date&maxResults=10`;
-    if (loadMore && nextPageToken) {
-      url += `&pageToken=${nextPageToken}`;
+    img {
+      width: 100%;
     }
-    const res = await fetch(url);
-    const data = await res.json();
-    const items = data.items.filter((item: any) => item.id.videoId);
-    setVideos((prev) => loadMore ? [...prev, ...items] : items);
-    setNextPageToken(data.nextPageToken || null);
-  }
+  </style>
+</head>
+<body>
+  <h1>日向坂46 YouTube チャンネル</h1>
+  <div id="videos"></div>
 
-  async function fetchNews() {
-    const res = await fetch(`https://newsdata.io/api/1/news?apikey=demo&q=日向坂46&language=ja&page=${newsPage}`);
-    const data = await res.json();
-    setNews((prev) => [...prev, ...(data.results || [])]);
-  }
+  <script>
+    const YOUTUBE_API_KEY = 'your_youtube_api_key';
+    const CHANNEL_ID = 'UCR0V48DJyWbwEAdxLL5FjxA'; // 日向坂46のチャンネルID
+    const API_URL = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${CHANNEL_ID}&part=snippet,id&order=date&maxResults=10`;
 
-  const sortedVideos = [...videos].sort((a, b) => {
-    const t1 = new Date(a.snippet.publishedAt).getTime();
-    const t2 = new Date(b.snippet.publishedAt).getTime();
-    return videoSort === "new" ? t2 - t1 : t1 - t2;
-  });
+    // YouTube APIから動画を取得する関数
+    async function fetchVideos() {
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      const videos = data.items;
 
-  const sortedNews = [...news].sort((a, b) => {
-    const t1 = new Date(a.pubDate).getTime();
-    const t2 = new Date(b.pubDate).getTime();
-    return newsSort === "new" ? t2 - t1 : t1 - t2;
-  });
+      // 動画データをHTMLに表示
+      const videoContainer = document.getElementById('videos');
+      videoContainer.innerHTML = ''; // 既存の内容をクリア
 
-  return (
-    <div className="p-4 space-y-4">
-      <Head>
-        <title>日向坂46ファンポータル</title>
-        <meta name="description" content="日向坂46のYouTube・ニュースまとめサイト" />
-      </Head>
+      videos.forEach(video => {
+        const videoElement = document.createElement('div');
+        videoElement.classList.add('video-card');
+        videoElement.innerHTML = `
+          <h3>${video.snippet.title}</h3>
+          <a href="https://www.youtube.com/watch?v=${video.id.videoId}" target="_blank">
+            <img src="${video.snippet.thumbnails.medium.url}" alt="${video.snippet.title}">
+          </a>
+        `;
+        videoContainer.appendChild(videoElement);
+      });
+    }
 
-      {view === "menu" && (
-        <div className="space-y-2">
-          <Button onClick={() => setView("youtube")}>YouTube</Button>
-          <Button onClick={() => setView("news")}>関連ニュース</Button>
-        </div>
-      )}
-
-      {view === "youtube" && !selectedChannel && (
-        <div className="space-y-2">
-          {CHANNELS.map((ch) => (
-            <Button key={ch.id} onClick={() => setSelectedChannel(ch.id)}>
-              {ch.name}
-            </Button>
-          ))}
-          <Button onClick={() => setView("menu")}>← 戻る</Button>
-        </div>
-      )}
-
-      {view === "youtube" && selectedChannel && (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <Button onClick={() => setVideoSort("new")}>新しい順</Button>
-            <Button onClick={() => setVideoSort("old")}>古い順</Button>
-            <Button onClick={() => fetchVideos(selectedChannel, true)}>もっと見る</Button>
-            <Button onClick={() => { setSelectedChannel(null); setVideos([]); }}>← 戻る</Button>
-          </div>
-          {sortedVideos.map((video, index) => (
-            <Card key={index}>
-              <CardContent>
-                <a
-                  href={`https://www.youtube.com/watch?v=${video.id.videoId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <p>{video.snippet.title}</p>
-                  <img src={video.snippet.thumbnails.medium.url} alt={video.snippet.title} />
-                </a>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {view === "news" && (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <Button onClick={() => setNewsSort("new")}>新しい順</Button>
-            <Button onClick={() => setNewsSort("old")}>古い順</Button>
-            <Button onClick={() => setNewsPage((prev) => prev + 1)}>もっと見る</Button>
-            <Button onClick={() => setView("menu")}>← 戻る</Button>
-          </div>
-          {sortedNews.map((article, index) => (
-            <Card key={index}>
-              <CardContent>
-                <a href={article.link} target="_blank" rel="noopener noreferrer">
-                  <p>{article.title}</p>
-                </a>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+    fetchVideos(); // ページが読み込まれたら動画を取得
+  </script>
+</body>
+</html>
