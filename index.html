@@ -52,9 +52,6 @@
       border-radius: 10px;
     }
     .hidden { display: none; }
-    .sort-options {
-      margin-bottom: 1em;
-    }
   </style>
 </head>
 <body>
@@ -66,27 +63,11 @@
 
   <div id="youtube" class="content">
     <h2>YouTube 更新</h2>
-    <div class="sort-options">
-      <label>並び順：
-        <select id="youtube-sort" onchange="renderYouTube()">
-          <option value="new">新しい順</option>
-          <option value="old">古い順</option>
-        </select>
-      </label>
-    </div>
     <div id="youtube-list"></div>
   </div>
 
   <div id="news" class="content hidden">
     <h2>日向坂 ニュース</h2>
-    <div class="sort-options">
-      <label>並び順：
-        <select id="news-sort" onchange="renderNews()">
-          <option value="new">新しい順</option>
-          <option value="old">古い順</option>
-        </select>
-      </label>
-    </div>
     <div id="news-list"></div>
   </div>
 
@@ -97,9 +78,6 @@
       document.getElementById(id).classList.remove('hidden');
     }
 
-    let youtubeData = [];
-    let newsData = [];
-
     async function fetchYouTubeRSS(channelId) {
       const url = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
       const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
@@ -107,29 +85,22 @@
       const parser = new DOMParser();
       const xml = parser.parseFromString(data.contents, 'text/xml');
       const entries = xml.querySelectorAll('entry');
+      let list = '';
       entries.forEach(entry => {
         const title = entry.querySelector('title').textContent;
         const link = entry.querySelector('link').getAttribute('href');
         const videoId = entry.querySelector('yt\\:videoId').textContent;
         const thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-        const pubDate = new Date(entry.querySelector('published').textContent);
-        youtubeData.push({ title, link, thumbnail, pubDate });
-      });
-      renderYouTube();
-    }
-
-    function renderYouTube() {
-      const sortOrder = document.getElementById('youtube-sort').value;
-      const sorted = [...youtubeData].sort((a, b) => sortOrder === 'new' ? b.pubDate - a.pubDate : a.pubDate - b.pubDate);
-      document.getElementById('youtube-list').innerHTML = sorted.map(item => `
-        <div class="card">
-          <img src="${item.thumbnail}" alt="${item.title}">
-          <div>
-            <a href="${item.link}" target="_blank">${item.title}</a><br>
-            <small>${item.pubDate.toLocaleDateString()}</small>
+        list += `
+          <div class="card">
+            <img src="${thumbnail}" alt="${title}">
+            <div>
+              <a href="${link}" target="_blank">${title}</a>
+            </div>
           </div>
-        </div>
-      `).join('');
+        `;
+      });
+      document.getElementById('youtube-list').innerHTML += list;
     }
 
     async function fetchNews() {
@@ -139,31 +110,24 @@
       const parser = new DOMParser();
       const xml = parser.parseFromString(data.contents, 'text/xml');
       const items = xml.querySelectorAll('item');
+      let list = '';
       items.forEach(item => {
         const title = item.querySelector('title').textContent;
         const link = item.querySelector('link').textContent;
-        const pubDate = new Date(item.querySelector('pubDate').textContent);
-        newsData.push({ title, link, pubDate });
-      });
-      renderNews();
-    }
-
-    function renderNews() {
-      const sortOrder = document.getElementById('news-sort').value;
-      const sorted = [...newsData].sort((a, b) => sortOrder === 'new' ? b.pubDate - a.pubDate : a.pubDate - b.pubDate);
-      document.getElementById('news-list').innerHTML = sorted.map(item => `
-        <div class="card">
-          <img src="https://via.placeholder.com/120x90.png?text=News" alt="News">
-          <div>
-            <a href="${item.link}" target="_blank">${item.title}</a><br>
-            <small>${item.pubDate.toLocaleDateString()}</small>
+        list += `
+          <div class="card">
+            <img src="https://via.placeholder.com/120x90.png?text=News" alt="News">
+            <div>
+              <a href="${link}" target="_blank">${title}</a>
+            </div>
           </div>
-        </div>
-      `).join('');
+        `;
+      });
+      document.getElementById('news-list').innerHTML = list;
     }
 
-    fetchYouTubeRSS('UCR0V48DJyWbwEAdxLL5FjxA'); // OFFICIAL
-    fetchYouTubeRSS('UCOB24f8lQBCnVqPZXOkVpOg'); // ちゃんねる
+    fetchYouTubeRSS('UCR0V48DJyWbwEAdxLL5FjxA'); // 日向坂46 OFFICIAL
+    fetchYouTubeRSS('UCOB24f8lQBCnVqPZXOkVpOg'); // 日向坂ちゃんねる
     fetchNews();
   </script>
 </body>
